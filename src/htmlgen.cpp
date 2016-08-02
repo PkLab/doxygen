@@ -52,6 +52,8 @@ static QCString g_footer;
 static QCString g_mathjax_code;
 
 
+// note: this is only active if DISABLE_INDEX=YES, if DISABLE_INDEX is disabled, this
+// part will be rendered inside menu.js
 static void writeClientSearchBox(FTextStream &t,const char *relPath)
 {
   t << "        <div id=\"MSearchBox\" class=\"MSearchBoxInactive\">\n";
@@ -72,6 +74,8 @@ static void writeClientSearchBox(FTextStream &t,const char *relPath)
   t << "        </div>\n";
 }
 
+// note: this is only active if DISABLE_INDEX=YES. if DISABLE_INDEX is disabled, this
+// part will be rendered inside menu.js
 static void writeServerSearchBox(FTextStream &t,const char *relPath,bool highlightSearch)
 {
   static bool externalSearch = Config_getBool(EXTERNAL_SEARCH);
@@ -1551,10 +1555,20 @@ void HtmlGenerator::endMemberDocList()
   DBG_HTML(t << "<!-- endMemberDocList -->" << endl;)
 }
 
-void HtmlGenerator::startMemberDoc(const char *,const char *,const char *,const char *,bool) 
-{ 
+void HtmlGenerator::startMemberDoc( const char *clName, const char *memName,
+                                    const char *anchor, const char *title, 
+                                    int memCount, int memTotal, bool showInline)
+{
   DBG_HTML(t << "<!-- startMemberDoc -->" << endl;)
- 
+  t << "\n<h2 class=\"memtitle\">"
+    << "<span class=\"permalink\"><a href=\"#" << anchor << "\">&sect;&nbsp;</a></span>"
+    << title;
+  if (memTotal>1)
+  {
+    t << " <span class=\"overload\">[" << memCount << "/" << memTotal <<"]</span>";
+  }
+  t << "</h2>"
+    << endl;
   t << "\n<div class=\"memitem\">" << endl;
   t << "<div class=\"memproto\">" << endl;
 }
@@ -2084,16 +2098,28 @@ static void writeDefaultQuickLinks(FTextStream &t,bool compact,
 {
   static bool serverBasedSearch = Config_getBool(SERVER_BASED_SEARCH);
   static bool searchEngine = Config_getBool(SEARCHENGINE);
+  static bool externalSearch = Config_getBool(EXTERNAL_SEARCH);
   LayoutNavEntry *root = LayoutDocManager::instance().rootNavEntry();
 
   if (compact)
   {
+    QCString searchPage;
+    if (externalSearch)
+    {
+      searchPage = "search" + Doxygen::htmlFileExtension;
+    }
+    else
+    {
+      searchPage = "search.php";
+    }
     t << "<script type=\"text/javascript\" src=\"" << relPath << "menudata.js\"></script>" << endl;
     t << "<script type=\"text/javascript\" src=\"" << relPath << "menu.js\"></script>" << endl;
     t << "<script type=\"text/javascript\">" << endl;
     t << "$(function() {" << endl;
     t << "  initMenu('" << relPath << "',"
-      << (searchEngine?"true":"false") << ",'"
+      << (searchEngine?"true":"false") << ","
+      << (serverBasedSearch?"true":"false") << ",'"
+      << searchPage << "','"
       << theTranslator->trSearch() << "');" << endl;
     if (Config_getBool(SEARCHENGINE))
     {
